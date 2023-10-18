@@ -18,7 +18,7 @@ However, I wanted the option of submitting a hand-edited shape to Geometry Scrip
 
 It proved to be easier than I had feared. The API for drawing thigs in Slate Control is a bit of a construction zone in the engine at the moment, with many functions marked deprecated and many controls in the Engine still using the deprecated functions. It looks like a sizable chunk of tech debt for Epic. I have tried to avoid all these where possible and concentrate on good practice.
 
-As this is not really a tutorial (which would be pohibitively long and basically a tutorial about almsot the entirety of Slate) I shal without further ado, present the code as a pair of gists. [Header](https://gist.github.com/johnfredcee/29921c9f20ed74be5cf1c4c2df21b8d5) [Body](https://gist.github.com/johnfredcee/5f10ca57e30003e6217e0eab979c6197)
+As this is not really a tutorial (which would be pohibitively long and basically a tutorial about almsot the entirety of Slate) I shall without further ado, present the code as a pair of gists. Firstly, the [Header](https://gist.github.com/johnfredcee/29921c9f20ed74be5cf1c4c2df21b8d5) and secondly, the [Body](https://gist.github.com/johnfredcee/5f10ca57e30003e6217e0eab979c6197)
 
 The implementation of drawing in the `OnPaint` method turned out to be relatively straightforward, after a bit of trial and error. The drawing region is defined by the `FGeometry` parameter passed to OnPaint. This can be manuiputated as it is converted into `PaintGeometry` for rendering, to define areas for boxes and text to be rendered in order to add handles to the vertices in the polyline.
 
