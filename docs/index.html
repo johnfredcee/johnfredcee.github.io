@@ -31,20 +31,40 @@
 
             <article class="post">
                 <h2 class="title">
-                    <a href="./Introducing.html" rel="bookmark" title="Permanent Link to &quot;Hello World&quot;">Hello World</a>
+                    <a href="./Editing Lines With Slate.html" rel="bookmark" title="Permanent Link to &quot;Slate Polyline Editor&quot;">Slate Polyline Editor</a>
                 </h2>
 
                 
                 
 
-                <p>With the impending demise of Twitter, I felt I needed a space to talk to the world about my coding adventures. I have shipped games when most current professional game developers were shipping nappies. A lot has happened, it seems a shame not to share! Most of the content will be Unreal Engine based as I have wrestled with it, in it's various incarnations, but there's likely to be diversions into Python, Lisp, compiler and tool design, and the the game industry.</p>
+                <p>As I am now, like many of my colleagues in the games industry in the UK, a person of leisure. I have begun to work on some projects of my own. It's very liberating to be free of the commercial constraints of an NDA even if the flip side is the lack of income. </p>
+<p>One tool I've wanted to write is making extrusions with geometry script easier to do and design. One of the obvious uses of Geometry Script is to take a profile of some kind and extrude it along a spline.  For example a <a href="https://youtu.be/WlUVRl5GUVE?si=zYfbw5bC0HpVLjkQ">Spline Railing</a> or <a href="https://youtu.be/pg8gx20jnOI?si=6bWTzie6wPtQMKlM">Spline Walls</a>. </p>
+<p><code>UDynamicMesh* UGeometryScriptLibrary_MeshPrimitiveFunctions::AppendSweepPolygon</code> is a Geometry Script function  which will take a polygon descriped as an array of <code>FVector2D</code> and sweep it along a path described as an array of <code>FTransform</code>, which is usually taken from slines (or it can be a sequence of locators, which will have to be the subject of a seperate post).</p>
+<p>The trouble is generating that array of FVector2D - there are a bunch of utility functions, like <code>FGeometryScriptPolyPath UGeometryScriptLibrary_PolyPathFunctions::CreateCirclePath2D</code> which will create such things for you based on a regular shape.</p>
+<p>However, I wanted the option of submitting a hand-edited shape to Geometry Script, and so wanted a polyline editor, and set out to write one in Slate. Below is a screencap of the result in action.</p>
+<p><a href="./images/spolylineeditor.png">Slate PolylineEditor</a></p>
+<p>It proved to be easier than I had feared. The API for drawing thigs in Slate Control is a bit of a construction zone in the engine at the moment, with many functions marked deprecated and many controls in the Engine still using the deprecated functions. It looks like a sizable chunk of tech debt for Epic. I have tried to avoid all these where possible and concentrate on good practice.</p>
+<p>As this is not really a tutorial (which would be pohibitively long and basically a tutorial about almsot the entirety of Slate) I shal without further ado, present the code as a pair of gists. <a href="https://gist.github.com/johnfredcee/29921c9f20ed74be5cf1c4c2df21b8d5">Header</a> <a href="https://gist.github.com/johnfredcee/5f10ca57e30003e6217e0eab979c6197">Body</a></p>
+<p>The implementation of drawing in the <code>OnPaint</code> method turned out to be relatively straightforward, after a bit of trial and error. The drawing region is defined by the <code>FGeometry</code> parameter passed to OnPaint. This can be manuiputated as it is converted into <code>PaintGeometry</code> for rendering, to define areas for boxes and text to be rendered in order to add handles to the vertices in the polyline.</p>
+<p>For Layout purposes it was important that the Slate control class was derived from <code>SLeafWidget</code>, so no logic to deal with child widgets was needed. ColourAndOpacity could be a straightforward <code>FLinearColor</code> attribute. </p>
+<p>Input could be dealt with by overriding <code>OnMouseButtonUp</code>, <code>OnMouseButtonMove</code>. Many parameters are exposed as an attribue as well as delegates tied to the mouse input functions. Ultimately the points used are held in an array of <code>FVector2f</code> which is also an attribute. One wrinkle in all this is that the control has a flag to signal a closed loop or a mirrored set of points. In the case of mirroring the points array actually only holds half the points and the points actually drawn are computed in the <code>ComputePoints</code> function. At the moment the code that consumes the points array needs to be aware of this. Adding a UFUNCTION that computes all the actual points is probably a good idea and left as an exercise for the reader. As is implmenenting a DOOM Wad Editor in Slate..:-)</p>
+<p>After this, the next step was to wrap the Slate Control in a UMG widget. Which will be the subject of the next post. Stay Tuned!</p>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="./Introducing.html">posted at 17:27</a>
-                    &nbsp;&middot;&nbsp;<a href="./category/introduction.html" rel="tag">Introduction</a>
+                    <a href="./Editing Lines With Slate.html">posted at 17:27</a>
+                    &nbsp;&middot;&nbsp;<a href="./category/slate-unreal.html" rel="tag">Slate, Unreal</a>
                 </div>
             </article>
+
+                <div class="clear"></div>
+                <div class="pages">
+
+
+                    <a href="./index2.html" class="next_page">Next&nbsp;&rarr;</a>
+
+                    <span>Page 1 of 2</span>
+                </div>
 
             <div class="clear"></div>
             <footer>

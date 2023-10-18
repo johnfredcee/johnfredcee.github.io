@@ -42,3 +42,4 @@ themes
 output
 *.pid
 .vscode/
+*.code-workspace
