@@ -6,6 +6,8 @@
     <title>Bad Byte Bootstrap Blues | Articles by John Connors</title>
     <link rel="shortcut icon" type="image/png" href="../images/favicon.png">
     <link rel="shortcut icon" type="image/x-icon" href="../images/favicon.ico">
+    <link href="https://johnfredcee.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full Atom Feed" />
+    <link href="https://johnfredcee.github.io/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full RSS Feed" />
     <link rel="stylesheet" href="../theme/css/main.css" type="text/css" />
     <link rel="stylesheet" href="../theme/css/pygments.css" type="text/css" />
     <meta name="generator" content="Pelican" />
@@ -29,32 +31,208 @@
         </div>
     </header>
     <div id="wrapper">
-        <div id="content">            <h4 class="date">Jan 22, 2023</h4>
+        <div id="content">            <h4 class="date">Oct 23, 2023</h4>
 
             <article class="post">
                 <h2 class="title">
-                    <a href="../Editing Lines With Slate.html" rel="bookmark" title="Permanent Link to &quot;Slate Polyline Editor&quot;">Slate Polyline Editor</a>
+                    <a href="../Wrapping Slate Control in UMG.html" rel="bookmark" title="Permanent Link to &quot;UMG Polyline Editor Widget&quot;">UMG Polyline Editor Widget</a>
                 </h2>
 
                 
                 
 
-                <p>As I am now, like many of my colleagues in the games industry in the UK, a person of leisure. I have begun to work on some projects of my own. It's very liberating to be free of the commercial constraints of an NDA even if the flip side is the lack of income. </p>
-<p>One tool I've wanted to write is making extrusions with geometry script easier to do and design. One of the obvious uses of Geometry Script is to take a profile of some kind and extrude it along a spline.  For example a <a href="https://youtu.be/WlUVRl5GUVE?si=zYfbw5bC0HpVLjkQ">Spline Railing</a> or <a href="https://youtu.be/pg8gx20jnOI?si=6bWTzie6wPtQMKlM">Spline Walls</a>. </p>
-<p><code>UDynamicMesh* UGeometryScriptLibrary_MeshPrimitiveFunctions::AppendSweepPolygon</code> is a Geometry Script function  which will take a polygon descriped as an array of <code>FVector2D</code> and sweep it along a path described as an array of <code>FTransform</code>, which is usually taken from slines (or it can be a sequence of locators, which will have to be the subject of a seperate post).</p>
-<p>The trouble is generating that array of FVector2D - there are a bunch of utility functions, like <code>FGeometryScriptPolyPath UGeometryScriptLibrary_PolyPathFunctions::CreateCirclePath2D</code> which will create such things for you based on a regular shape.</p>
-<p>However, I wanted the option of submitting a hand-edited shape to Geometry Script, and so wanted a polyline editor, and set out to write one in Slate. Below is a screencap of the result in action.</p>
-<p><a href="../images/spolylineeditor.png">Slate PolylineEditor</a></p>
-<p>It proved to be easier than I had feared. The API for drawing thigs in Slate Control is a bit of a construction zone in the engine at the moment, with many functions marked deprecated and many controls in the Engine still using the deprecated functions. It looks like a sizable chunk of tech debt for Epic. I have tried to avoid all these where possible and concentrate on good practice.</p>
-<p>As this is not really a tutorial (which would be pohibitively long and basically a tutorial about almsot the entirety of Slate) I shall without further ado, present the code as a pair of gists. Firstly, the <a href="https://gist.github.com/johnfredcee/29921c9f20ed74be5cf1c4c2df21b8d5">Header</a> and secondly, the <a href="https://gist.github.com/johnfredcee/5f10ca57e30003e6217e0eab979c6197">Body</a></p>
-<p>The implementation of drawing in the <code>OnPaint</code> method turned out to be relatively straightforward, after a bit of trial and error. The drawing region is defined by the <code>FGeometry</code> parameter passed to OnPaint. This can be manuiputated as it is converted into <code>PaintGeometry</code> for rendering, to define areas for boxes and text to be rendered in order to add handles to the vertices in the polyline.</p>
-<p>For Layout purposes it was important that the Slate control class was derived from <code>SLeafWidget</code>, so no logic to deal with child widgets was needed. ColourAndOpacity could be a straightforward <code>FLinearColor</code> attribute. </p>
-<p>Input could be dealt with by overriding <code>OnMouseButtonUp</code>, <code>OnMouseButtonMove</code>. Many parameters are exposed as an attribue as well as delegates tied to the mouse input functions. Ultimately the points used are held in an array of <code>FVector2f</code> which is also an attribute. One wrinkle in all this is that the control has a flag to signal a closed loop or a mirrored set of points. In the case of mirroring the points array actually only holds half the points and the points actually drawn are computed in the <code>ComputePoints</code> function. At the moment the code that consumes the points array needs to be aware of this. Adding a UFUNCTION that computes all the actual points is probably a good idea and left as an exercise for the reader. As is implmenenting a DOOM Wad Editor in Slate..:-)</p>
-<p>After this, the next step was to wrap the Slate Control in a UMG widget. Which will be the subject of the next post. Stay Tuned!</p>
+                <p>The Polyline editor I blogged about last time is a Slate Widget; the ultimate goal is to use it as a UMG control as it enables much faster implementation of useful Editor tools like this one <img alt="Profile Editor Widget" src="../images/profileeditor.png"></p>
+<p>Fortunaely this is an even more straightforward process than the creation of the Slate Control. It derives from <code>UWidget</code> and not <code>UUserWidget</code>. It turns out that <code>UUserWidget</code> is for Blueprint classes to derive from and if you derive from this in C++, the widget will NOT appear in the Widget palette; this behaviour is hardcoded into the engine and was the source of some inital confusion. So, here is the code to achive that!</p>
+<div class="gist">
+    <script src='https://gist.github.com/cc077687b9c9172f9d75b7c22761eff6.js'></script>
+    <noscript>
+        <pre><code>// Copyright (C) John Connors 2023
+//
+//	Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files(the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+//
+//	The above copyright notice and this permission notice shall be included in all copies
+//	or substantial portions of the Software.
+//
+//	   THE SOFTWARE IS PROVIDED “AS IS”,
+//	WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+#include "PolylineEditorWidget.h"
+
+#define LOCTEXT_NAMESPACE "PolylineEditor"
+
+UPolylineEditorWidget::UPolylineEditorWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	XRange = 1.0f;
+	YRange = 1.0f;
+	LineThickness = 2.0f;
+	bClosedLine = false;
+	bMirror = false;
+}
+
+
+void UPolylineEditorWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	PolylineEditor.Reset();
+}
+
+TSharedRef<SWidget> UPolylineEditorWidget::RebuildWidget()
+{
+// clang-format: off
+	PolylineEditor = SNew(SPolylineEditor)
+						 .Points(Points)
+						 .Brush(&Brush)
+						 .LineThickness(LineThickness)
+						 .LineScale(FVector2f(XRange, YRange))
+						 .bClosedLine(bClosedLine)
+						 .bMirror(bMirror)
+						 .OnPointAdded(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointAdded))
+						 .OnPointRemoved(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointRemoved))
+						 .OnPointMoved(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointMoved));
+// clang-format : on
+
+	return PolylineEditor.ToSharedRef();
+}
+
+
+void UPolylineEditorWidget::SynchronizeProperties()
+{
+	PolylineEditor->SetBrush(&Brush);
+	PolylineEditor->SetLineThickness(LineThickness);
+	PolylineEditor->SetLineScale(FVector2f{ XRange, YRange });
+	PolylineEditor->SetPoints(Points);
+	PolylineEditor->SetClosedLine(bClosedLine);
+	PolylineEditor->SetMirrored(bMirror);
+	Super::SynchronizeProperties();
+}
+
+void UPolylineEditorWidget::HandlePointAdded()
+{
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
+}
+
+void UPolylineEditorWidget::HandlePointRemoved()
+{
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
+}
+
+void UPolylineEditorWidget::HandlePointMoved()
+{
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
+}
+
+void UPolylineEditorWidget::ComputeAllPoints(TArray<FVector2f>& AllPoints)
+{
+	constexpr bool bIncludeAllMirrorPoints = true;
+	return PolylineEditor->ComputeAllPoints(AllPoints, bIncludeAllMirrorPoints);
+}
+
+#if WITH_EDITOR
+
+const FText UPolylineEditorWidget::GetPaletteCategory()
+{
+	return LOCTEXT("Geometry", "Geometry");
+}
+
+#endif
+
+
+#undef LOCTEXT_NAMESPACE
+</code></pre>
+    </noscript>
+</div>
+<div class="gist">
+    <script src='https://gist.github.com/b3166d9eabaa70ba3871547a27a8ea85.js'></script>
+    <noscript>
+        <pre><code>// Copyright (C) John Connors 2023
+//
+//	Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files(the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+//
+//	The above copyright notice and this permission notice shall be included in all copies
+//	or substantial portions of the Software.
+//
+//	   THE SOFTWARE IS PROVIDED “AS IS”,
+//	WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Delegates/Delegate.h"
+#include "Blueprint/UserWidget.h"
+#include "SPolylineEditor.h"
+#include "PolylineEditorWidget.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPointsModified);
+/**
+ * 
+ */
+UCLASS(BlueprintType)
+class SANDBOXTOOLS_API UPolylineEditorWidget : public UWidget
+{
+	GENERATED_BODY()
+
+public:
+	UPolylineEditorWidget(const FObjectInitializer& ObjectInitializer);
+
+
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	virtual const FText GetPaletteCategory() override;
+	virtual void SynchronizeProperties() override;
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	TSharedPtr<SPolylineEditor> PolylineEditor;
+
+	void HandlePointAdded();
+	void HandlePointRemoved();
+	void HandlePointMoved();
+
+	UPROPERTY(BlueprintAssignable)
+	FOnPointsModified PointsModified;
+
+	UFUNCTION(BlueprintCallable, Category = "Geometry")
+	void ComputeAllPoints(TArray<FVector2f>& AllPoints);
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	FSlateBrush Brush;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	TArray<FVector2f> Points;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float LineThickness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float XRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float YRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	bool bClosedLine;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	bool bMirror;
+
+
+	
+};
+</code></pre>
+    </noscript>
+</div>
+<p>The properties of the Slate Control that we want to expose to the user are exposed as UProperties. These are passed to the Slate Control in it's constructor as SLATE_ARGUMENTS and the control is constructed in the <code>RebuildWidget</code> method that is overriden from <code>UWidget</code></p>
+<p>Other functions that have to be implemented are <code>ReleaseSlateResources</code> which destroys the Slate Control; <code>SynchronizeProperties</code> which sets the members of the slate control to the values of the UPROPERTIES of the widget, creating a communication conduit from UMG properties to the Slate control members. </p>
+<p>One of the members of the widget is an array of points. In the control the points are deleted, modified and created by mouse clicks, so I implemented a sequence of functions in the widget <code>HandlePointAdded</code>, <code>HandlePointRemoved</code>. and <code>HandlePointModified</code> which call multicast delegates for the user of the control to potentially hook in to.</p>
+<p>One last function to override is <code>GetPaletteCategory</code> to define what cateogry it appears in, in the UMG Widget palette; I created a new category <code>Geometry</code> because my code is so important, it deserves it's own cateogory like that!</p>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="../Editing Lines With Slate.html">posted at 17:27</a>
+                    <a href="../Wrapping Slate Control in UMG.html">posted at 11:27</a>
                     &nbsp;&middot;&nbsp;<a href="../category/slate-unreal.html" rel="tag">Slate, Unreal</a>
                 </div>
             </article>
@@ -65,7 +243,7 @@
 
                     <a href="../author/john-connors2.html" class="next_page">Next&nbsp;&rarr;</a>
 
-                    <span>Page 1 of 2</span>
+                    <span>Page 1 of 3</span>
                 </div>
 
             <div class="clear"></div>
@@ -74,6 +252,10 @@
                 <a href="https://github.com/tcarwash/blue-penguin-dark">Blue Penguin Dark</a> Theme
                 &middot;
                 Powered by <a href="http://getpelican.com">Pelican</a>
+                &middot;
+                <a href="../feeds/all.atom.xml" rel="alternate">Atom Feed</a>
+                &middot;
+                <a href="../feeds/all.rss.xml" rel="alternate">Rss Feed</a>
             </footer>
         </div>
         <div class="clear"></div>

@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Bad Byte Bootstrap Blues | Page 2</title>
-    <link rel="shortcut icon" type="image/png" href="./images/favicon.png">
-    <link rel="shortcut icon" type="image/x-icon" href="./images/favicon.ico">
+    <title>Bad Byte Bootstrap Blues | articles in the "Slate, Unreal" category | Page 2</title>
+    <link rel="shortcut icon" type="image/png" href="../images/favicon.png">
+    <link rel="shortcut icon" type="image/x-icon" href="../images/favicon.ico">
     <link href="https://johnfredcee.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full Atom Feed" />
     <link href="https://johnfredcee.github.io/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full RSS Feed" />
-    <link rel="stylesheet" href="./theme/css/main.css" type="text/css" />
-    <link rel="stylesheet" href="./theme/css/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../theme/css/main.css" type="text/css" />
+    <link rel="stylesheet" href="../theme/css/pygments.css" type="text/css" />
     <meta name="generator" content="Pelican" />
     <meta name="description" content="" />
     <meta name="author" content="John Connors" />
@@ -18,12 +18,14 @@
     <header>
         <nav style="overflow: hidden;">
             <ul>
-                <li><a href="./">Home</a></li>
-                <li><a href="./pages/about.html">About</a></li>
+
+                <li class="ephemeral selected"><a href="../category/slate-unreal2.html">Slate, Unreal</a></li>
+                <li><a href="../">Home</a></li>
+                <li><a href="../pages/about.html">About</a></li>
             </ul>
         </nav>
         <div class="header_box" style="height: 50px">
-        <h1><a href="./">
+        <h1><a href="../">
             <image src='images/logo.png' class="avatar" width="50px" /><span class="site_title">Bad Byte Bootstrap Blues</span>
             </a></h1></div>
         </div>
@@ -33,7 +35,7 @@
 
             <article class="post">
                 <h2 class="title">
-                    <a href="./Editing Lines With Slate.html" rel="bookmark" title="Permanent Link to &quot;Slate Polyline Editor&quot;">Slate Polyline Editor</a>
+                    <a href="../Editing Lines With Slate.html" rel="bookmark" title="Permanent Link to &quot;Slate Polyline Editor&quot;">Slate Polyline Editor</a>
                 </h2>
 
                 
@@ -44,7 +46,7 @@
 <p><code>UDynamicMesh* UGeometryScriptLibrary_MeshPrimitiveFunctions::AppendSweepPolygon</code> is a Geometry Script function  which will take a polygon descriped as an array of <code>FVector2D</code> and sweep it along a path described as an array of <code>FTransform</code>, which is usually taken from slines (or it can be a sequence of locators, which will have to be the subject of a seperate post).</p>
 <p>The trouble is generating that array of FVector2D - there are a bunch of utility functions, like <code>FGeometryScriptPolyPath UGeometryScriptLibrary_PolyPathFunctions::CreateCirclePath2D</code> which will create such things for you based on a regular shape.</p>
 <p>However, I wanted the option of submitting a hand-edited shape to Geometry Script, and so wanted a polyline editor, and set out to write one in Slate. Below is a screencap of the result in action.</p>
-<p><img alt="Slate PolylineEditor" src="./images/spolylineeditor.png"></p>
+<p><img alt="Slate PolylineEditor" src="../images/spolylineeditor.png"></p>
 <p>It proved to be easier than I had feared. The API for drawing thigs in Slate Control is a bit of a construction zone in the engine at the moment, with many functions marked deprecated and many controls in the Engine still using the deprecated functions. It looks like a sizable chunk of tech debt for Epic. I have tried to avoid all these where possible and concentrate on good practice.</p>
 <p>As this is not really a tutorial (which would be pohibitively long and basically a tutorial about almsot the entirety of Slate) I shall without further ado, present the code as a pair of gists. </p>
 <p>Firstly, the Header</p>
@@ -446,19 +448,18 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="./Editing Lines With Slate.html">posted at 10:27</a>
-                    &nbsp;&middot;&nbsp;<a href="./category/slate-unreal.html" rel="tag">Slate, Unreal</a>
+                    <a href="../Editing Lines With Slate.html">posted at 10:27</a>
+                    &nbsp;&middot;&nbsp;<a href="../category/slate-unreal.html" rel="tag">Slate, Unreal</a>
                 </div>
             </article>
 
                 <div class="clear"></div>
                 <div class="pages">
 
-                    <a href="./index.html" class="prev_page">&larr;&nbsp;Previous</a>
+                    <a href="../category/slate-unreal.html" class="prev_page">&larr;&nbsp;Previous</a>
 
-                    <a href="./index3.html" class="next_page">Next&nbsp;&rarr;</a>
 
-                    <span>Page 2 of 3</span>
+                    <span>Page 2 of 2</span>
                 </div>
 
             <div class="clear"></div>
@@ -468,9 +469,9 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
                 &middot;
                 Powered by <a href="http://getpelican.com">Pelican</a>
                 &middot;
-                <a href="./feeds/all.atom.xml" rel="alternate">Atom Feed</a>
+                <a href="../feeds/all.atom.xml" rel="alternate">Atom Feed</a>
                 &middot;
-                <a href="./feeds/all.rss.xml" rel="alternate">Rss Feed</a>
+                <a href="../feeds/all.rss.xml" rel="alternate">Rss Feed</a>
             </footer>
         </div>
         <div class="clear"></div>
