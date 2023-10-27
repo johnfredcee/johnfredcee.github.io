@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
+        <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Bad Byte Bootstrap Blues | Archives</title>
+    <title>Bad Byte Bootstrap Blues | Creating a Data Asset Instancce in Blueprint</title>
     <link rel="shortcut icon" type="image/png" href="./images/favicon.png">
     <link rel="shortcut icon" type="image/x-icon" href="./images/favicon.ico">
     <link href="https://johnfredcee.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full Atom Feed" />
@@ -13,6 +13,7 @@
     <meta name="generator" content="Pelican" />
     <meta name="description" content="" />
     <meta name="author" content="John Connors" />
+
 </head>
 <body>
     <header>
@@ -29,25 +30,26 @@
         </div>
     </header>
     <div id="wrapper">
-        <div id="content">
-    <h1>Archives</h1>
+        <div id="content">            <h4 class="date">Oct 27, 2023</h4>
 
+            <article class="post">
+                <h2 class="title">
+                    <a href="./Blueprint creation of Data Asset Instance.html" rel="bookmark" title="Permanent Link to &quot;Creating a Data Asset Instancce in Blueprint&quot;">Creating a Data Asset Instancce in Blueprint</a>
+                </h2>
 
-            <h4 class="date">Oct 2023</h4>
-            <div class="post archives">
-                <ul>
-                    <li><a href="./Blueprint creation of Data Asset Instance.html">Creating a Data Asset Instancce in Blueprint</a></li>
-                    <li><a href="./Wrapping Slate Control in UMG.html">UMG Polyline Editor Widget</a></li>
-                    <li><a href="./Editing Lines With Slate.html">Slate Polyline Editor</a></li>
-                </ul>
-            </div>
-            <h4 class="date">Jan 2023</h4>
-            <div class="post archives">
-                <ul>
-                    <li><a href="./Introducing.html">Hello World</a></li>
-                </ul>
-            </div>
+                
+                
 
+                <p>This is just a quick blog, as I saw some people struggling with this and having to use external plugins to do this, and hope Google will direct people to this, post, eventually!</p>
+<p>Creating a Data Asset isd  possible now, in 5.3. I think this will work with 5.0 upwards, as it relies on the Geometry Script implementation to create a unique asset name and path.  You need to enable viewing C++ classes in the content browser to select the data asset class if it's a native class. Also, you do not need a factory, which is just as well as creating a UDataAssetFactory seems to be prolematic in both C++ and Blueprint. </p>
+<p><img alt="Creating A Data Asset Instance" src="./images/creatingdataasset.png"></p>
+                <div class="clear"></div>
+
+                <div class="info">
+                    <a href="./Blueprint creation of Data Asset Instance.html">posted at 09:19</a>
+                    &nbsp;&middot;&nbsp;<a href="./category/blueprint-unreal-dataasset.html" rel="tag">Blueprint, Unreal, DataAsset</a>
+                </div>
+            </article>
             <div class="clear"></div>
             <footer>
                 <p>

@@ -29,29 +29,20 @@
         </div>
     </header>
     <div id="wrapper">
-        <div id="content">            <h4 class="date">Oct 17, 2023</h4>
+        <div id="content">            <h4 class="date">Oct 23, 2023</h4>
 
             <article class="post">
                 <h2 class="title">
-                    <a href="./Editing Lines With Slate.html" rel="bookmark" title="Permanent Link to &quot;Slate Polyline Editor&quot;">Slate Polyline Editor</a>
+                    <a href="./Wrapping Slate Control in UMG.html" rel="bookmark" title="Permanent Link to &quot;UMG Polyline Editor Widget&quot;">UMG Polyline Editor Widget</a>
                 </h2>
 
                 
                 
 
-                <p>As I am now, like many of my colleagues in the games industry in the UK, a person of leisure. I have begun to work on some projects of my own. It's very liberating to be free of the commercial constraints of an NDA even if the flip side is the lack of income. </p>
-<p>One tool I've wanted to write is making extrusions with geometry script easier to do and design. One of the obvious uses of Geometry Script is to take a profile of some kind and extrude it along a spline.  For example a <a href="https://youtu.be/WlUVRl5GUVE?si=zYfbw5bC0HpVLjkQ">Spline Railing</a> or <a href="https://youtu.be/pg8gx20jnOI?si=6bWTzie6wPtQMKlM">Spline Walls</a>. </p>
-<p><code>UDynamicMesh* UGeometryScriptLibrary_MeshPrimitiveFunctions::AppendSweepPolygon</code> is a Geometry Script function  which will take a polygon descriped as an array of <code>FVector2D</code> and sweep it along a path described as an array of <code>FTransform</code>, which is usually taken from slines (or it can be a sequence of locators, which will have to be the subject of a seperate post).</p>
-<p>The trouble is generating that array of FVector2D - there are a bunch of utility functions, like <code>FGeometryScriptPolyPath UGeometryScriptLibrary_PolyPathFunctions::CreateCirclePath2D</code> which will create such things for you based on a regular shape.</p>
-<p>However, I wanted the option of submitting a hand-edited shape to Geometry Script, and so wanted a polyline editor, and set out to write one in Slate. Below is a screencap of the result in action.</p>
-<p><img alt="Slate PolylineEditor" src="./images/spolylineeditor.png"></p>
-<p>It proved to be easier than I had feared. The API for drawing thigs in Slate Control is a bit of a construction zone in the engine at the moment, with many functions marked deprecated and many controls in the Engine still using the deprecated functions. It looks like a sizable chunk of tech debt for Epic. I have tried to avoid all these where possible and concentrate on good practice.</p>
-<p>As this is not really a tutorial (which would be pohibitively long and basically a tutorial about almsot the entirety of Slate) I shall without further ado, present the code as a pair of gists. </p>
-<p>Firstly, the Header</p>
-<p>[gist:id=29921c9f20ed74be5cf1c4c2df21b8d5] </p>
-<p>Secondly, the Body</p>
+                <p>The Polyline editor I blogged about last time is a Slate Widget; the ultimate goal is to use it as a UMG control as it enables much faster implementation of useful Editor tools like this one <img alt="Profile Editor Widget" src="./images/profileeditor.png"></p>
+<p>Fortunaely this is an even more straightforward process than the creation of the Slate Control. It derives from <code>UWidget</code> and not <code>UUserWidget</code>. It turns out that <code>UUserWidget</code> is for Blueprint classes to derive from and if you derive from this in C++, the widget will NOT appear in the Widget palette; this behaviour is hardcoded into the engine and was the source of some inital confusion. So, here is the code to achive that!</p>
 <div class="gist">
-    <script src='https://gist.github.com/5f10ca57e30003e6217e0eab979c6197.js'></script>
+    <script src='https://gist.github.com/cc077687b9c9172f9d75b7c22761eff6.js'></script>
     <noscript>
         <pre><code>// Copyright (C) John Connors 2023
 //
@@ -63,390 +54,183 @@
 //	   THE SOFTWARE IS PROVIDED “AS IS”,
 //	WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include "SPolylineEditor.h"
-#include "SlateOptMacros.h"
-#include "GeometryScript/ShapeFunctions.h"
-#include <Brushes/SlateColorBrush.h>
 
-const FVector2f SPolylineEditor::PointRadius = FVector2f(8.0f, 8.0f);
+#include "PolylineEditorWidget.h"
 
-BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
-void SPolylineEditor::Construct(const FArguments& InArgs)
+#define LOCTEXT_NAMESPACE "PolylineEditor"
+
+UPolylineEditorWidget::UPolylineEditorWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
-	Brush = FInvalidatableBrushAttribute(InArgs._Brush);
-	Points = InArgs._Points;
-	LineThickness = InArgs._LineThickness,
-	LineScale = InArgs._LineScale,
-	bClosedLine = InArgs._bClosedLine;
-	bMirror = InArgs._bMirror;
-	ColorAndOpacity = FLinearColor::White;
-	OnPointAdded = InArgs._OnPointAdded;
-	OnPointRemoved = InArgs._OnPointRemoved;
-	OnPointMoved = InArgs._OnPointMoved;
-	PointBeingDragged = INDEX_NONE;
-}
-
-bool SPolylineEditor::IsMirrorVertex(int Index) const
-{
-	bool bResult = false;
-	if (bMirror)
-	{
-		bResult = (Index >= Points.Num());
-		if ((bClosedLine) && (Index >= Points.Num() * 2))
-		{
-			bResult = false;
-		}
-	}
-	return bResult;
-}
-
-void SPolylineEditor::ComputeAllPoints(TArray<FVector2f>& AllPoints, bool bIncludeMirrorPoints) const
-{
-	AllPoints.Reserve(Points.Num() + bClosedLine ? 1 : 0);
-	for (auto& Point : Points)
-	{
-		AllPoints.AddZeroed();
-		FVector2f& LinePoint = AllPoints.Last();
-		LinePoint = Point;
-	}
-	if ((bMirror) && (bIncludeMirrorPoints))
-	{
-		auto PointIt = Points.CreateConstIterator();
-		auto PointBeginIt = Points.CreateConstIterator();
-		PointIt.SetToEnd();
-		do {
-			--PointIt;
-			AllPoints.AddZeroed();
-			FVector2f& LinePoint = AllPoints.Last();
-			LinePoint = *PointIt;
-			LinePoint.X = -LinePoint.X;	
-		} while (PointIt != PointBeginIt);
-	}
-	if (bClosedLine)
-	{
-			AllPoints.AddZeroed();
-			AllPoints.Last() = AllPoints[0];
-	}
-}
-
-void SPolylineEditor::ComputeLinePoints(TArray<FVector2f>& LinePoints, const FGeometry& InGeometry, bool bIncludeMirrorPoints) const
-{
-	const FVector2f Pos = FVector2f::ZeroVector;
-	const FVector2f Size = InGeometry.GetLocalSize();
-	const FVector2f Center = Pos + 0.5f * Size;
-
-	LinePoints.Reserve(Points.Num() + bClosedLine ? 1 : 0);
-	FVector2f Scale{
-		Size.X / (LineScale.X * 2.0f), Size.Y / (LineScale.Y * 2.0f)
-	};
-	for (auto& Point : Points)
-	{
-		LinePoints.AddZeroed();
-		FVector2f& LinePoint = LinePoints.Last();
-		LinePoint = Point * Scale + Center;
-	}
-	if ((bMirror) && (bIncludeMirrorPoints))
-	{
-		auto PointIt = Points.CreateConstIterator();
-		auto PointBeginIt = Points.CreateConstIterator();
-		PointIt.SetToEnd();
-		do
-		{
-			--PointIt;
-			LinePoints.AddZeroed();
-			FVector2f& LinePoint = LinePoints.Last();
-			LinePoint = *PointIt;
-			LinePoint.X = -LinePoint.X;
-			LinePoint = LinePoint * Scale + Center;
-		}
-		while (PointIt != PointBeginIt);
-	}
-	if (bClosedLine)
-	{
-		LinePoints.AddZeroed();
-		LinePoints.Last() = LinePoints[0];
-	}
-}
-
-FVector2f SPolylineEditor::MakePoint(const FGeometry& InGeometry, const FVector2f& InPoint)
-{
-	const FVector2f Pos = FVector2f::ZeroVector;
-	const FVector2f Size = InGeometry.GetLocalSize();
-	const FVector2f Center = Pos + 0.5f * Size;
-	FVector2f InverseScale{
-		(LineScale.X * 2.0f) / Size.X , (LineScale.Y * 2.0f) / Size.Y 
-	};
-	return (InPoint - Center) * InverseScale;
-}	
-
-FVector2D SPolylineEditor::ComputeDesiredSize(float LayoutScaleMultiplier) const
-{
-	return FVector2D(LineScale.X * 100.0, LineScale.Y * 100.0);
-}
-
-int32 SPolylineEditor::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
-{
-	const FVector2f Pos = FVector2f::ZeroVector;
-	const FVector2f Size = AllottedGeometry.GetLocalSize();
-	const FVector2f Center = Pos + 0.5f * Size;
-	//const float Radius = FMath::Min(Size.X, Size.Y) * 0.5f;
-	FSlateColorBrush WhiteBox = FSlateColorBrush(FColor::White);
-
-	const FSlateBrush* SlateBrush = Brush.GetImage().Get();
-	FLinearColor LinearColor = GetColorAndOpacity() * InWidgetStyle.GetColorAndOpacityTint() * SlateBrush->GetTint(InWidgetStyle);
-	FColor FinalColorAndOpacity = LinearColor.ToFColor(true);
-
-	//SLeafWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled && IsEnabled());
-
-	// Fill the background of the grid
-	const FSlateBrush* BackgroundImage = FAppStyle::GetBrush(TEXT("Graph.Panel.SolidBackground"));
-	FSlateDrawElement::MakeBox(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), BackgroundImage);
-
-	if (Points.Num() >= 2)
-	{
-		TArray<FVector2f> LinePoints;
-		ComputeLinePoints(LinePoints, AllottedGeometry);
-
-		const FSlateResourceHandle Handle = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*SlateBrush);
-		FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 1, AllottedGeometry.ToPaintGeometry(), LinePoints, ESlateDrawEffect::NoPixelSnapping, 
-									  FinalColorAndOpacity, true);
-		const FSlateFontInfo FontInfo = FCoreStyle::GetDefaultFontStyle("Bold", 10);
-		for (int i = 0; i < LinePoints.Num(); i++)
-		{
-			auto Point = LinePoints[i];
-			FLinearColor BoxColor = IsMirrorVertex(i) ? FLinearColor(FColor::Orange) : FLinearColor::Green;
-			FSlateDrawElement::MakeBox(
-				OutDrawElements,
-				LayerId + 2,
-				AllottedGeometry.ToPaintGeometry(FVector2D(2.f * PointRadius), FSlateLayoutTransform(Point - PointRadius)),
-				&WhiteBox,
-				// bEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect,
-				ESlateDrawEffect::NoPixelSnapping,
-				BoxColor * FLinearColor(1.f, 1.f, 1.f, 0.25f));
-			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 3,
-				AllottedGeometry.ToPaintGeometry(FVector2D(2.f * PointRadius), FSlateLayoutTransform(Point - PointRadius)),
-				FString::FromInt(i),
-				FontInfo);
-
-		}
-	}
-	else
-	{
-		FSlateDrawElement::MakeDebugQuad(OutDrawElements, LayerId, AllottedGeometry.ToPaintGeometry(), FLinearColor::Blue);
-	}
-	return LayerId;
-}
-
-FReply SPolylineEditor::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
-{
-	if ((PointBeingDragged == INDEX_NONE) && (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton))
-	{
-		const FVector2f LocalCursorPos = UE::Slate::CastToVector2f(MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition()));
-		PointBeingDragged = PointIndexFromCursorPos(MyGeometry, LocalCursorPos, PointRadius.X * PointRadius.X * 2.0f * 2.0f);
-		if (PointBeingDragged != INDEX_NONE)
-		{
-			return FReply::Handled().CaptureMouse(SharedThis(this));
-		}
-	}
-	return FReply::Unhandled();
-}
-
-FReply SPolylineEditor::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
-{
-	if ((PointBeingDragged != INDEX_NONE) && (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton))
-	{
-		 const FVector2f LocalCursorPos = UE::Slate::CastToVector2f(MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition()));
-		 PointBeingDragged = INDEX_NONE;
-		 return FReply::Handled().ReleaseMouseCapture();
-	}
-	if ((PointBeingDragged == INDEX_NONE) && (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton))
-	{
-		 const FVector2f LocalCursorPos = UE::Slate::CastToVector2f(MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition()));
-		 int32 PointToDelete = PointIndexFromCursorPos(MyGeometry, LocalCursorPos, PointRadius.X * PointRadius.X * 2.0f * 2.0f);
-		 if (PointToDelete != INDEX_NONE)
-		 {
-			Points.RemoveAt(PointToDelete);
-			OnPointMoved.ExecuteIfBound();
-		 }
-	}
-	return FReply::Unhandled();
-}
-
-FReply SPolylineEditor::OnMouseButtonDoubleClick(const FGeometry& InMyGeometry, const FPointerEvent& InMouseEvent)
-{
-	if (InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
-	{
-		const FVector2f LocalCursorPos = UE::Slate::CastToVector2f(InMyGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()));
-		AddClosestPointAndIndex(InMyGeometry, LocalCursorPos);
-		OnPointAdded.ExecuteIfBound();
-		return FReply::Handled();
-	}
-	return FReply::Unhandled();
-}
-
-FReply SPolylineEditor::OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
-{
-	if (PointBeingDragged != INDEX_NONE)
-	{
-		const FVector2f LocalCursorPos = UE::Slate::CastToVector2f(MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition()));
-		Points[PointBeingDragged] = MakePoint(MyGeometry, LocalCursorPos);
-		OnPointMoved.ExecuteIfBound();
-		return FReply::Handled();
-	}
-
-	return FReply::Unhandled();
+	XRange = 1.0f;
+	YRange = 1.0f;
+	LineThickness = 2.0f;
+	bClosedLine = false;
+	bMirror = false;
 }
 
 
-int32 SPolylineEditor::PointIndexFromCursorPos(const FGeometry& MyGeometry, const FVector2f LocalCursorPos, const float RadiusSquared)
+void UPolylineEditorWidget::ReleaseSlateResources(bool bReleaseChildren)
 {
-	TArray<FVector2f> LinePoints;
-	ComputeLinePoints(LinePoints, MyGeometry, false);
-	for (int i = 0; i < LinePoints.Num(); ++i)
-	{
-		const float SizeSquared = (LinePoints[i] - LocalCursorPos).SizeSquared();
-		if (SizeSquared < RadiusSquared)
-		{
-			return i;
-		}
-	}
-	return INDEX_NONE;
+	PolylineEditor.Reset();
 }
 
-void SPolylineEditor::AddClosestPointAndIndex(const FGeometry& MyGeometry, FVector2f LocalCursorPos)
+TSharedRef<SWidget> UPolylineEditorWidget::RebuildWidget()
 {
-	using URayFuncs = UGeometryScriptLibrary_RayFunctions;
+// clang-format: off
+	PolylineEditor = SNew(SPolylineEditor)
+						 .Points(Points)
+						 .Brush(&Brush)
+						 .LineThickness(LineThickness)
+						 .LineScale(FVector2f(XRange, YRange))
+						 .bClosedLine(bClosedLine)
+						 .bMirror(bMirror)
+						 .OnPointAdded(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointAdded))
+						 .OnPointRemoved(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointRemoved))
+						 .OnPointMoved(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointMoved));
+// clang-format : on
 
-	auto SignedDistancePointLine2D = [](const FVector2f Point, const FVector2f Start, const FVector2f End) {
-		using FReal = FVector::FReal;
-
-		auto Cross2D = [](const FVector2f& A, const FVector2f& B) {
-			return A.X * B.Y - A.Y * B.X;
-		};
-
-
-		const FVector2f Seg(End - Start);
-		const FVector2f Dir(Point - Start);
-		const FReal Nom = Cross2D(Seg, Dir);
-		const FReal Den = Seg.SquaredLength();
-		const FReal Dist = Den > UE_KINDA_SMALL_NUMBER ? (Nom / FMath::Sqrt(Den)) : 0.0;
-		return Dist;
-	};
-
-	auto ProjectPointOnSegment2D = [](const FVector2f Point, const FVector2f Start, const FVector2f End) {
-		using FReal = FVector::FReal;
-
-		const FVector2f Seg(End - Start);
-		const FVector2f Dir(Point - Start);
-		const FReal D = Seg.SquaredLength();
-		const FReal T = FVector2f::DotProduct(Seg, Dir);
-
-		if (T < 0.0)
-		{
-			return 0.0;
-		}
-		else if (T > D)
-		{
-			return 1.0;
-		}
-
-		return D > UE_KINDA_SMALL_NUMBER ? (T / D) : 0.0;
-	};
-
-
-
-	TArray<FVector2f> LinePoints;
-	ComputeLinePoints(LinePoints, MyGeometry, false);
-	int32 NumLinePoints = LinePoints.Num();
-	int IndexNearest = -1;
-	float ShortestDist = BIG_NUMBER;
-	for (int i = 0; i < NumLinePoints - 1; ++i)
-	{
-		FVector2f PointA(LinePoints[i]);
-		FVector2f PointB(LinePoints[(i + 1) % NumLinePoints]);
-		float Dist = FMath::Abs(SignedDistancePointLine2D(LocalCursorPos, PointA, PointB));
-		if ((Dist < ShortestDist)
-			&& (Dist < PointRadius.X * 2.0))
-		{
-			ShortestDist = Dist;
-			IndexNearest = i;
-		}
-	}
-	if (IndexNearest == -1)
-	{
-		Points.Add(MakePoint(MyGeometry, LocalCursorPos));
-		return;
-	}
-	FVector2f PointA = LinePoints[IndexNearest];
-	FVector2f PointB = LinePoints[(IndexNearest + 1) % NumLinePoints];
-	float D = ProjectPointOnSegment2D(LocalCursorPos, PointA, PointB);
-	if ((D > KINDA_SMALL_NUMBER)
-		&& (D < 1.0f - KINDA_SMALL_NUMBER))
-	{
-		FVector2f NewLinePoint = (PointB - PointA) * D + PointA;
-		FVector2f NewPoint = MakePoint(MyGeometry, NewLinePoint);
-		Points.Insert(NewPoint, (IndexNearest + 1) % NumLinePoints);
-	}
-}
-
-void SPolylineEditor::SetColorAndOpacity(FLinearColor InColorAndOpacity)
-{
-	ColorAndOpacity = InColorAndOpacity;
+	return PolylineEditor.ToSharedRef();
 }
 
 
-const FLinearColor& SPolylineEditor::GetColorAndOpacity() const
+void UPolylineEditorWidget::SynchronizeProperties()
 {
-	return ColorAndOpacity;
+	PolylineEditor->SetBrush(&Brush);
+	PolylineEditor->SetLineThickness(LineThickness);
+	PolylineEditor->SetLineScale(FVector2f{ XRange, YRange });
+	PolylineEditor->SetPoints(Points);
+	PolylineEditor->SetClosedLine(bClosedLine);
+	PolylineEditor->SetMirrored(bMirror);
+	Super::SynchronizeProperties();
 }
 
-void SPolylineEditor::SetBrush(FSlateBrush* InBrush)
+void UPolylineEditorWidget::HandlePointAdded()
 {
-	Brush.SetImage(*this, InBrush);
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
 }
 
-void SPolylineEditor::SetLineScale(FVector2f InScale)
+void UPolylineEditorWidget::HandlePointRemoved()
 {
-	LineScale = InScale;
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
 }
 
-void SPolylineEditor::SetLineThickness(float InThickness)
+void UPolylineEditorWidget::HandlePointMoved()
 {
-	LineThickness = InThickness;
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
 }
 
-const TArray<FVector2f>& SPolylineEditor::GetPoints()
+void UPolylineEditorWidget::ComputeAllPoints(TArray<FVector2f>& AllPoints)
 {
-	return Points;
+	constexpr bool bIncludeAllMirrorPoints = true;
+	return PolylineEditor->ComputeAllPoints(AllPoints, bIncludeAllMirrorPoints);
 }
 
-void SPolylineEditor::SetPoints(const TArray<FVector2f>& InPoints)
+#if WITH_EDITOR
+
+const FText UPolylineEditorWidget::GetPaletteCategory()
 {
-	Points = InPoints;
+	return LOCTEXT("Geometry", "Geometry");
 }
 
-void SPolylineEditor::SetClosedLine(const bool bInClosedLine)
-{
-	bClosedLine = bInClosedLine;
-}
+#endif
 
-void SPolylineEditor::SetMirrored(bool bInMirror)
-{
-	bMirror = bInMirror;
-}
 
-END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+#undef LOCTEXT_NAMESPACE
 </code></pre>
     </noscript>
 </div>
-<p>The implementation of drawing in the <code>OnPaint</code> method turned out to be relatively straightforward, after a bit of trial and error. The drawing region is defined by the <code>FGeometry</code> parameter passed to OnPaint. This can be manuiputated as it is converted into <code>PaintGeometry</code> for rendering, to define areas for boxes and text to be rendered in order to add handles to the vertices in the polyline.</p>
-<p>For Layout purposes it was important that the Slate control class was derived from <code>SLeafWidget</code>, so no logic to deal with child widgets was needed. ColourAndOpacity could be a straightforward <code>FLinearColor</code> attribute. </p>
-<p>Input could be dealt with by overriding <code>OnMouseButtonUp</code>, <code>OnMouseButtonMove</code>. Many parameters are exposed as an attribue as well as delegates tied to the mouse input functions. Ultimately the points used are held in an array of <code>FVector2f</code> which is also an attribute. One wrinkle in all this is that the control has a flag to signal a closed loop or a mirrored set of points. In the case of mirroring the points array actually only holds half the points and the points actually drawn are computed in the <code>ComputePoints</code> function. At the moment the code that consumes the points array needs to be aware of this. Adding a UFUNCTION that computes all the actual points is probably a good idea and left as an exercise for the reader. As is implmenenting a DOOM Wad Editor in Slate..:-)</p>
-<p>After this, the next step was to wrap the Slate Control in a UMG widget. Which will be the subject of the next post. Stay Tuned!</p>
+<div class="gist">
+    <script src='https://gist.github.com/b3166d9eabaa70ba3871547a27a8ea85.js'></script>
+    <noscript>
+        <pre><code>// Copyright (C) John Connors 2023
+//
+//	Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files(the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+//
+//	The above copyright notice and this permission notice shall be included in all copies
+//	or substantial portions of the Software.
+//
+//	   THE SOFTWARE IS PROVIDED “AS IS”,
+//	WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Delegates/Delegate.h"
+#include "Blueprint/UserWidget.h"
+#include "SPolylineEditor.h"
+#include "PolylineEditorWidget.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPointsModified);
+/**
+ * 
+ */
+UCLASS(BlueprintType)
+class SANDBOXTOOLS_API UPolylineEditorWidget : public UWidget
+{
+	GENERATED_BODY()
+
+public:
+	UPolylineEditorWidget(const FObjectInitializer& ObjectInitializer);
+
+
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	virtual const FText GetPaletteCategory() override;
+	virtual void SynchronizeProperties() override;
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	TSharedPtr<SPolylineEditor> PolylineEditor;
+
+	void HandlePointAdded();
+	void HandlePointRemoved();
+	void HandlePointMoved();
+
+	UPROPERTY(BlueprintAssignable)
+	FOnPointsModified PointsModified;
+
+	UFUNCTION(BlueprintCallable, Category = "Geometry")
+	void ComputeAllPoints(TArray<FVector2f>& AllPoints);
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	FSlateBrush Brush;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	TArray<FVector2f> Points;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float LineThickness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float XRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float YRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	bool bClosedLine;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	bool bMirror;
+
+
+	
+};
+</code></pre>
+    </noscript>
+</div>
+<p>The properties of the Slate Control that we want to expose to the user are exposed as UProperties. These are passed to the Slate Control in it's constructor as SLATE_ARGUMENTS and the control is constructed in the <code>RebuildWidget</code> method that is overriden from <code>UWidget</code></p>
+<p>Other functions that have to be implemented are <code>ReleaseSlateResources</code> which destroys the Slate Control; <code>SynchronizeProperties</code> which sets the members of the slate control to the values of the UPROPERTIES of the widget, creating a communication conduit from UMG properties to the Slate control members. </p>
+<p>One of the members of the widget is an array of points. In the control the points are deleted, modified and created by mouse clicks, so I implemented a sequence of functions in the widget <code>HandlePointAdded</code>, <code>HandlePointRemoved</code>. and <code>HandlePointModified</code> which call multicast delegates for the user of the control to potentially hook in to.</p>
+<p>One last function to override is <code>GetPaletteCategory</code> to define what cateogry it appears in, in the UMG Widget palette; I created a new category <code>Geometry</code> because my code is so important, it deserves it's own cateogory like that!</p>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="./Editing Lines With Slate.html">posted at 10:27</a>
+                    <a href="./Wrapping Slate Control in UMG.html">posted at 11:27</a>
                     &nbsp;&middot;&nbsp;<a href="./category/slate-unreal.html" rel="tag">Slate, Unreal</a>
                 </div>
             </article>
@@ -458,7 +242,7 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
                     <a href="./index3.html" class="next_page">Next&nbsp;&rarr;</a>
 
-                    <span>Page 2 of 3</span>
+                    <span>Page 2 of 4</span>
                 </div>
 
             <div class="clear"></div>
