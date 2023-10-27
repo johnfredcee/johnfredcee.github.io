@@ -1,4 +1,4 @@
-Title: Creating a Data Asset Instancce in Blueprint
+Title: Creating a Data Asset Instance in Blueprint
 Category: Blueprint, Unreal, DataAsset
 Slug: Blueprint creation of Data Asset Instance
 Summary: How to create a Data Asset Instance in Blueprint
