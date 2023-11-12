@@ -31,22 +31,209 @@
         </div>
     </header>
     <div id="wrapper">
-        <div id="content">            <h4 class="date">Jan 22, 2023</h4>
+        <div id="content">            <h4 class="date">Oct 23, 2023</h4>
 
             <article class="post">
                 <h2 class="title">
-                    <a href="../Introducing.html" rel="bookmark" title="Permanent Link to &quot;Hello World&quot;">Hello World</a>
+                    <a href="../Wrapping Slate Control in UMG.html" rel="bookmark" title="Permanent Link to &quot;UMG Polyline Editor Widget&quot;">UMG Polyline Editor Widget</a>
                 </h2>
 
                 
                 
 
-                <p>With the impending demise of Twitter, I felt I needed a space to talk to the world about my coding adventures. I have shipped games when most current professional game developers were shipping nappies. A lot has happened, it seems a shame not to share! Most of the content will be Unreal Engine based as I have wrestled with it, in it's various incarnations, but there's likely to be diversions into Python, Lisp, compiler and tool design, and the the game industry.</p>
+                <p>The Polyline editor I blogged about last time is a Slate Widget; the ultimate goal is to use it as a UMG control as it enables much faster implementation of useful Editor tools like this one <img alt="Profile Editor Widget" src="../images/profileeditor.png"></p>
+<p>Fortunaely this is an even more straightforward process than the creation of the Slate Control. It derives from <code>UWidget</code> and not <code>UUserWidget</code>. It turns out that <code>UUserWidget</code> is for Blueprint classes to derive from and if you derive from this in C++, the widget will NOT appear in the Widget palette; this behaviour is hardcoded into the engine and was the source of some inital confusion. So, here is the code to achive that!</p>
+<div class="gist">
+    <script src='https://gist.github.com/cc077687b9c9172f9d75b7c22761eff6.js'></script>
+    <noscript>
+        <pre><code>// Copyright (C) John Connors 2023
+//
+//	Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files(the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+//
+//	The above copyright notice and this permission notice shall be included in all copies
+//	or substantial portions of the Software.
+//
+//	   THE SOFTWARE IS PROVIDED “AS IS”,
+//	WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+#include "PolylineEditorWidget.h"
+
+#define LOCTEXT_NAMESPACE "PolylineEditor"
+
+UPolylineEditorWidget::UPolylineEditorWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	XRange = 1.0f;
+	YRange = 1.0f;
+	LineThickness = 2.0f;
+	bClosedLine = false;
+	bMirror = false;
+}
+
+
+void UPolylineEditorWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	PolylineEditor.Reset();
+}
+
+TSharedRef<SWidget> UPolylineEditorWidget::RebuildWidget()
+{
+// clang-format: off
+	PolylineEditor = SNew(SPolylineEditor)
+						 .Points(Points)
+						 .Brush(&Brush)
+						 .LineThickness(LineThickness)
+						 .LineScale(FVector2f(XRange, YRange))
+						 .bClosedLine(bClosedLine)
+						 .bMirror(bMirror)
+						 .OnPointAdded(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointAdded))
+						 .OnPointRemoved(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointRemoved))
+						 .OnPointMoved(BIND_UOBJECT_DELEGATE(FSimpleDelegate, HandlePointMoved));
+// clang-format : on
+
+	return PolylineEditor.ToSharedRef();
+}
+
+
+void UPolylineEditorWidget::SynchronizeProperties()
+{
+	PolylineEditor->SetBrush(&Brush);
+	PolylineEditor->SetLineThickness(LineThickness);
+	PolylineEditor->SetLineScale(FVector2f{ XRange, YRange });
+	PolylineEditor->SetPoints(Points);
+	PolylineEditor->SetClosedLine(bClosedLine);
+	PolylineEditor->SetMirrored(bMirror);
+	Super::SynchronizeProperties();
+}
+
+void UPolylineEditorWidget::HandlePointAdded()
+{
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
+}
+
+void UPolylineEditorWidget::HandlePointRemoved()
+{
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
+}
+
+void UPolylineEditorWidget::HandlePointMoved()
+{
+	Points = PolylineEditor->GetPoints();
+	PointsModified.Broadcast();
+}
+
+void UPolylineEditorWidget::ComputeAllPoints(TArray<FVector2f>& AllPoints)
+{
+	constexpr bool bIncludeAllMirrorPoints = true;
+	return PolylineEditor->ComputeAllPoints(AllPoints, bIncludeAllMirrorPoints);
+}
+
+#if WITH_EDITOR
+
+const FText UPolylineEditorWidget::GetPaletteCategory()
+{
+	return LOCTEXT("Geometry", "Geometry");
+}
+
+#endif
+
+
+#undef LOCTEXT_NAMESPACE
+</code></pre>
+    </noscript>
+</div>
+<div class="gist">
+    <script src='https://gist.github.com/b3166d9eabaa70ba3871547a27a8ea85.js'></script>
+    <noscript>
+        <pre><code>// Copyright (C) John Connors 2023
+//
+//	Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files(the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+//
+//	The above copyright notice and this permission notice shall be included in all copies
+//	or substantial portions of the Software.
+//
+//	   THE SOFTWARE IS PROVIDED “AS IS”,
+//	WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Delegates/Delegate.h"
+#include "Blueprint/UserWidget.h"
+#include "SPolylineEditor.h"
+#include "PolylineEditorWidget.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPointsModified);
+/**
+ * 
+ */
+UCLASS(BlueprintType)
+class SANDBOXTOOLS_API UPolylineEditorWidget : public UWidget
+{
+	GENERATED_BODY()
+
+public:
+	UPolylineEditorWidget(const FObjectInitializer& ObjectInitializer);
+
+
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	virtual const FText GetPaletteCategory() override;
+	virtual void SynchronizeProperties() override;
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	TSharedPtr<SPolylineEditor> PolylineEditor;
+
+	void HandlePointAdded();
+	void HandlePointRemoved();
+	void HandlePointMoved();
+
+	UPROPERTY(BlueprintAssignable)
+	FOnPointsModified PointsModified;
+
+	UFUNCTION(BlueprintCallable, Category = "Geometry")
+	void ComputeAllPoints(TArray<FVector2f>& AllPoints);
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	FSlateBrush Brush;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	TArray<FVector2f> Points;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float LineThickness;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float XRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	float YRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	bool bClosedLine;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Geometry")
+	bool bMirror;
+
+
+	
+};
+</code></pre>
+    </noscript>
+</div>
+<p>The properties of the Slate Control that we want to expose to the user are exposed as UProperties. These are passed to the Slate Control in it's constructor as SLATE_ARGUMENTS and the control is constructed in the <code>RebuildWidget</code> method that is overriden from <code>UWidget</code></p>
+<p>Other functions that have to be implemented are <code>ReleaseSlateResources</code> which destroys the Slate Control; <code>SynchronizeProperties</code> which sets the members of the slate control to the values of the UPROPERTIES of the widget, creating a communication conduit from UMG properties to the Slate control members. </p>
+<p>One of the members of the widget is an array of points. In the control the points are deleted, modified and created by mouse clicks, so I implemented a sequence of functions in the widget <code>HandlePointAdded</code>, <code>HandlePointRemoved</code>. and <code>HandlePointModified</code> which call multicast delegates for the user of the control to potentially hook in to.</p>
+<p>One last function to override is <code>GetPaletteCategory</code> to define what cateogry it appears in, in the UMG Widget palette; I created a new category <code>Geometry</code> because my code is so important, it deserves it's own cateogory like that!</p>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="../Introducing.html">posted at 17:27</a>
-                    &nbsp;&middot;&nbsp;<a href="../category/introduction.html" rel="tag">Introduction</a>
+                    <a href="../Wrapping Slate Control in UMG.html">posted at 11:27</a>
+                    &nbsp;&middot;&nbsp;<a href="../category/slate-unreal.html" rel="tag">Slate, Unreal</a>
                 </div>
             </article>
 
@@ -55,8 +242,9 @@
 
                     <a href="../author/john-connors3.html" class="prev_page">&larr;&nbsp;Previous</a>
 
+                    <a href="../author/john-connors5.html" class="next_page">Next&nbsp;&rarr;</a>
 
-                    <span>Page 4 of 4</span>
+                    <span>Page 4 of 6</span>
                 </div>
 
             <div class="clear"></div>
