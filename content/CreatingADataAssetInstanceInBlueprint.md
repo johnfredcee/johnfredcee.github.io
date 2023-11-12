@@ -9,3 +9,5 @@ This is just a quick blog, as I saw some people struggling with this and having 
  You will want to open the image in a new tab to see it in all it's glory!
 
 ![Creating A Data Asset Instance]({static}images/creatingdataasset.png)
+
+Note that I have since updated this with a slightly better method that does not require the Geometry Script Library. [More here.]({filename}CreatingADataAssetInstanceInBlueprintPartTwo.md)

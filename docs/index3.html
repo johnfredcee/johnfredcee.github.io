@@ -29,25 +29,25 @@
         </div>
     </header>
     <div id="wrapper">
-        <div id="content">            <h4 class="date">Nov 12, 2023</h4>
+        <div id="content">            <h4 class="date">Oct 27, 2023</h4>
 
             <article class="post">
                 <h2 class="title">
-                    <a href="./Blueprint creation of Data Asset Instance Again.html" rel="bookmark" title="Permanent Link to &quot;Creating a Data Asset Instance in Blueprint Again&quot;">Creating a Data Asset Instance in Blueprint Again</a>
+                    <a href="./Blueprint creation of Data Asset Instance.html" rel="bookmark" title="Permanent Link to &quot;Creating a Data Asset Instance in Blueprint&quot;">Creating a Data Asset Instance in Blueprint</a>
                 </h2>
 
                 
                 
 
-                <p>It turns out there's a better way to create a Data Asset instance at runtime than the blog I posted earlier, which relied on a function in the Geometry Scripting Library. There is a function in the Asset Tools Library which also creates unique asset names, but in true Epic fashion it's tricky to use and undocumented.</p>
-<p>The Asset Tools function, <code>CreateUniqueAssetName</code> is bit of a strange one. It takes a base package name, including an asset name and appends a suffix. If the suffix is numeric and about one, the suffix will auto-increment to the fist available suffix value each time a new asset is created. Which is completely not a use-confounding way to things!</p>
-<p>Without further ado, I present the right way to create an asset at edit time  without needing an asset fractory, in Blueprint. Hope it helps some poor sod who stumbles on this via their search engine.</p>
+                <p>This is just a quick blog, as I saw some people struggling with this and having to use external plugins to do this, and hope Google will direct people to this, post, eventually!</p>
+<p>Creating a Data Asset is  possible now, in 5.3. I think this will work with 5.0 upwards, as it relies on the Geometry Script implementation to create a unique asset name and path.  You need to enable viewing C++ classes in the content browser to select the data asset class if it's a native class. Also, you do not need a factory, which is just as well as creating a UDataAssetFactory seems to be prolematic in both C++ and Blueprint. </p>
 <p>You will want to open the image in a new tab to see it in all it's glory!</p>
-<p><img alt="Creating A Data Asset Instance With Asset Tools" src="./images/creatingdataassetredux.png"></p>
+<p><img alt="Creating A Data Asset Instance" src="./images/creatingdataasset.png"></p>
+<p>Note that I have since updated this with a slightly better method that does not require the Geometry Script Library. <a href="./Blueprint creation of Data Asset Instance Again.html">More here.</a></p>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="./Blueprint creation of Data Asset Instance Again.html">posted at 10:30</a>
+                    <a href="./Blueprint creation of Data Asset Instance.html">posted at 11:23</a>
                     &nbsp;&middot;&nbsp;<a href="./category/blueprint-unreal-dataasset.html" rel="tag">Blueprint, Unreal, DataAsset</a>
                 </div>
             </article>
