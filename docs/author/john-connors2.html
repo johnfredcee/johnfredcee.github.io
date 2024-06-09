@@ -31,66 +31,42 @@
         </div>
     </header>
     <div id="wrapper">
-        <div id="content">            <h4 class="date">Nov 12, 2023</h4>
+        <div id="content">            <h4 class="date">Jan 07, 2024</h4>
 
             <article class="post">
                 <h2 class="title">
-                    <a href="../C++ creation of a Spline Component in Unreal.html" rel="bookmark" title="Permanent Link to &quot;Creating a Spline Component from a Polyline in Unreal&quot;">Creating a Spline Component from a Polyline in Unreal</a>
+                    <a href="../Creating and making a component visible in the Unreal Editor.html" rel="bookmark" title="Permanent Link to &quot;Creating a Component At Edit time&quot;">Creating a Component At Edit time</a>
                 </h2>
 
                 
                 
 
-                <p>The Spline Component API in Unreal is a very fat one with lots of methods in it, and it's not entirely clear how to use it at first glance. Like creating a Data Asset Instance, it's a question that crops up and doesn't always get seem to be answered. After a brief bit of experimentation I found it's much easier than it fist appears. Essentially the only function you actually need is <code>AddSplinePointAtIndex(InPoint, AddIdx, ESplineCoordinateSpace::Local);</code></p>
-<p>The main snag with the code below is the fact it's compiled into a game module rather than an editor module and the viewport is not updated when the component is attached to the actor. If you are in editor code, <code>GEditor-&gt;RedrawLevelEditingViewports(true);</code> should update the viewport for you, but this won't link in a game module, obviously.</p>
-<p>Here is the gist!</p>
-<div class="gist">
-    <script src='https://gist.github.com/a75b8c249cfa33c8760d60a10f71f2b6.js'></script>
-    <noscript>
-        <pre><code>/**	
-* Generate a spline we will later use to extrue a road from a set of points
-*/
-void ARoadNetwork::GenerateRoadSplines(const TArray<FVector>& InPoints)
-{
-	// SplineBeingEdited is an Editor Only property we use to see our new component
-	// in the details panel as it won't show up otherwise
-#if WITH_EDITORONLY_DATA
-	if (SplineBeingEdited == nullptr)
-	{
-#endif
-		// create the component
-		USplineComponent* SplineComponent = NewObject<USplineComponent>(this);
-#if WITH_EDITORONLY_DATA
-		// ensure it appears in the details panel
-		SplineBeingEdited = SplineComponent;
-#endif
-		SplineComponent->RegisterComponent();
-		SplineComponent->ComponentTags.Add(TEXT("Generated"));
-		// set the spline to default state, but with no points
-		SplineComponent->ResetToDefault();
-		SplineComponent->ClearSplinePoints();
-		// Iterate over our input points and add spline points to the spline component
-		for (const auto& InPoint : InPoints)
-		{
-			int32 AddIdx = SplineComponent->GetNumberOfSplinePoints();
-			SplineComponent->AddSplinePointAtIndex(InPoint, AddIdx, ESplineCoordinateSpace::Local);
-		}
-		// ensure spline is updated
-		constexpr bool bUpdateSpline = true;
-		SplineComponent->SetClosedLoop(bUpdateSpline);
-		// attach spline component to root
-		FAttachmentTransformRules Rules(FAttachmentTransformRules::KeepRelativeTransform);
-		SplineComponent->AttachToComponent(RootComponent, Rules);
-	}
-}
-</code></pre>
-    </noscript>
-</div>
+                <p>I am currently writing quite a bit of editor code that involves creting and attaching components to Actors at Edit time (yes, more procedural geometry). I have noticed there's a lot of information on doing this, but they all have one flaw: the created component does not become visible in the details panel immediately. </p>
+<p>The component creation sequence goes something like this:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="n">HeterogeneousVolumeComponent</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">NewObject</span><span class="o">&lt;</span><span class="n">UHeterogeneousVolumeComponent</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="n">TEXT</span><span class="p">(</span><span class="s">&quot;MeshPainterVolumeComponent&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ensure</span><span class="p">(</span><span class="n">HeterogeneousVolumeComponent</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">HeterogeneousVolumeComponent</span><span class="o">-&gt;</span><span class="n">RegisterComponent</span><span class="p">();</span>
+<span class="w">        </span><span class="n">HeterogeneousVolumeComponent</span><span class="o">-&gt;</span><span class="n">AttachToComponent</span><span class="p">(</span><span class="n">GetRootComponent</span><span class="p">(),</span><span class="w"> </span><span class="n">FAttachmentTransformRules</span><span class="o">::</span><span class="n">KeepRelativeTransform</span><span class="p">);</span>
+<span class="w">        </span><span class="n">HeterogeneousVolumeComponent</span><span class="o">-&gt;</span><span class="n">CreationMethod</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EComponentCreationMethod</span><span class="o">::</span><span class="n">Instance</span><span class="p">;</span>
+</code></pre></div>
+
+<p>This is the usual sqeuence, but it has one flaw - the details panel of the actor containing the components is not updated. For that you will need the <code>LevelEditor</code> module. Which is the module that manages all the details panels, scene outliners and other Slate Windows. We could dig into the SLevelEditor instance and find our details panel and refresh it, but fortunately, it seems there's ComponentEdited event which will do it for us.</p>
+<div class="highlight"><pre><span></span><code><span class="w">         </span><span class="n">FLevelEditorModule</span><span class="o">*</span><span class="w"> </span><span class="n">LevelEditorPtr</span><span class="p">{</span><span class="n">FModuleManager</span><span class="o">::</span><span class="n">Get</span><span class="p">().</span><span class="n">LoadModulePtr</span><span class="o">&lt;</span><span class="n">FLevelEditorModule</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;LevelEditor&quot;</span><span class="p">)};</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">LevelEditorPtr</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">         </span><span class="n">LevelEditorPtr</span><span class="o">-&gt;</span><span class="n">BroadcastComponentsEdited</span><span class="p">();</span><span class="w">      </span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+
+<p>And that's it; it's a small change but it makes your tool so much more useable!</p>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="../C++ creation of a Spline Component in Unreal.html">posted at 10:34</a>
-                    &nbsp;&middot;&nbsp;<a href="../category/blueprint-unreal-splinecomponent.html" rel="tag">Blueprint, Unreal, SplineComponent</a>
+                    <a href="../Creating and making a component visible in the Unreal Editor.html">posted at 08:20</a>
+                    &nbsp;&middot;&nbsp;<a href="../category/unreal-components-detailspanel.html" rel="tag">Unreal, Components, DetailsPanel</a>
                 </div>
             </article>
 
@@ -101,7 +77,7 @@ void ARoadNetwork::GenerateRoadSplines(const TArray<FVector>& InPoints)
 
                     <a href="../author/john-connors3.html" class="next_page">Next&nbsp;&rarr;</a>
 
-                    <span>Page 2 of 7</span>
+                    <span>Page 2 of 8</span>
                 </div>
 
             <div class="clear"></div>
