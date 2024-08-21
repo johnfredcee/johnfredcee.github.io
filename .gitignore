@@ -43,3 +43,4 @@ output
 *.pid
 .vscode/
 *.code-workspace
+unused/
