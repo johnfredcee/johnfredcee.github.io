@@ -33,22 +33,62 @@
 
             <article class="post">
                 <h2 class="title">
-                    <a href="./Blueprint creation of Data Asset Instance Again.html" rel="bookmark" title="Permanent Link to &quot;Creating a Data Asset Instance in Blueprint Again&quot;">Creating a Data Asset Instance in Blueprint Again</a>
+                    <a href="./C++ creation of a Spline Component in Unreal.html" rel="bookmark" title="Permanent Link to &quot;Creating a Spline Component from a Polyline in Unreal&quot;">Creating a Spline Component from a Polyline in Unreal</a>
                 </h2>
 
                 
                 
 
-                <p>It turns out there's a better way to create a Data Asset instance at runtime than the blog I posted earlier, which relied on a function in the Geometry Scripting Library. There is a function in the Asset Tools Library which also creates unique asset names, but in true Epic fashion it's tricky to use and undocumented.</p>
-<p>The Asset Tools function, <code>CreateUniqueAssetName</code> is bit of a strange one. It takes a base package name, including an asset name and appends a suffix. If the suffix is numeric and about one, the suffix will auto-increment to the fist available suffix value each time a new asset is created. Which is completely not a use-confounding way to things!</p>
-<p>Without further ado, I present the right way to create an asset at edit time  without needing an asset fractory, in Blueprint. Hope it helps some poor sod who stumbles on this via their search engine.</p>
-<p>You will want to open the image in a new tab to see it in all it's glory!</p>
-<p><img alt="Creating A Data Asset Instance With Asset Tools" src="./images/creatingdataassetredux.png"></p>
+                <p>The Spline Component API in Unreal is a very fat one with lots of methods in it, and it's not entirely clear how to use it at first glance. Like creating a Data Asset Instance, it's a question that crops up and doesn't always get seem to be answered. After a brief bit of experimentation I found it's much easier than it fist appears. Essentially the only function you actually need is <code>AddSplinePointAtIndex(InPoint, AddIdx, ESplineCoordinateSpace::Local);</code></p>
+<p>The main snag with the code below is the fact it's compiled into a game module rather than an editor module and the viewport is not updated when the component is attached to the actor. If you are in editor code, <code>GEditor-&gt;RedrawLevelEditingViewports(true);</code> should update the viewport for you, but this won't link in a game module, obviously.</p>
+<p>Here is the gist!</p>
+<div class="gist">
+    <script src='https://gist.github.com/a75b8c249cfa33c8760d60a10f71f2b6.js'></script>
+    <noscript>
+        <pre><code>/**	
+* Generate a spline we will later use to extrue a road from a set of points
+*/
+void ARoadNetwork::GenerateRoadSplines(const TArray<FVector>& InPoints)
+{
+	// SplineBeingEdited is an Editor Only property we use to see our new component
+	// in the details panel as it won't show up otherwise
+#if WITH_EDITORONLY_DATA
+	if (SplineBeingEdited == nullptr)
+	{
+#endif
+		// create the component
+		USplineComponent* SplineComponent = NewObject<USplineComponent>(this);
+#if WITH_EDITORONLY_DATA
+		// ensure it appears in the details panel
+		SplineBeingEdited = SplineComponent;
+#endif
+		SplineComponent->RegisterComponent();
+		SplineComponent->ComponentTags.Add(TEXT("Generated"));
+		// set the spline to default state, but with no points
+		SplineComponent->ResetToDefault();
+		SplineComponent->ClearSplinePoints();
+		// Iterate over our input points and add spline points to the spline component
+		for (const auto& InPoint : InPoints)
+		{
+			int32 AddIdx = SplineComponent->GetNumberOfSplinePoints();
+			SplineComponent->AddSplinePointAtIndex(InPoint, AddIdx, ESplineCoordinateSpace::Local);
+		}
+		// ensure spline is updated
+		constexpr bool bUpdateSpline = true;
+		SplineComponent->SetClosedLoop(bUpdateSpline);
+		// attach spline component to root
+		FAttachmentTransformRules Rules(FAttachmentTransformRules::KeepRelativeTransform);
+		SplineComponent->AttachToComponent(RootComponent, Rules);
+	}
+}
+</code></pre>
+    </noscript>
+</div>
                 <div class="clear"></div>
 
                 <div class="info">
-                    <a href="./Blueprint creation of Data Asset Instance Again.html">posted at 10:30</a>
-                    &nbsp;&middot;&nbsp;<a href="./category/blueprint-unreal-dataasset.html" rel="tag">Blueprint, Unreal, DataAsset</a>
+                    <a href="./C++ creation of a Spline Component in Unreal.html">posted at 10:34</a>
+                    &nbsp;&middot;&nbsp;<a href="./category/blueprint-unreal-splinecomponent.html" rel="tag">Blueprint, Unreal, SplineComponent</a>
                 </div>
             </article>
 
@@ -59,7 +99,7 @@
 
                     <a href="./index5.html" class="next_page">Next&nbsp;&rarr;</a>
 
-                    <span>Page 4 of 8</span>
+                    <span>Page 4 of 9</span>
                 </div>
 
             <div class="clear"></div>
