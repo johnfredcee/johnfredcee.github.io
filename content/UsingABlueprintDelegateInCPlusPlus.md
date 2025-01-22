@@ -1,6 +1,6 @@
-Title: Calling a Blueprint Delegate vai C++ and returning a result.
+Title: Calling a Blueprint Delegate via C++ and returning a result.
 Category: Unreal, Blueprint, C++
-Slug: Unreal Engine: Using a Blueprint Delegate via C++
+Slug: Using a Blueprint Delegate via C++
 Summary: How to use a Blueprint Delegate from C++ and get a result returned
 
 Recently I wrote some C++ code to create and seed volume textures for Unreal. I wanted it to be useable by artists, in a way that looked something like this:

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Bad Byte Bootstrap Blues | Calling a Blueprint Delegate via C++ and returning a result.</title>
+    <link rel="shortcut icon" type="image/png" href="./images/favicon.png">
+    <link rel="shortcut icon" type="image/x-icon" href="./images/favicon.ico">
+    <link href="https://johnfredcee.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full Atom Feed" />
+    <link href="https://johnfredcee.github.io/feeds/all.rss.xml" type="application/rss+xml" rel="alternate" title="Bad Byte Bootstrap Blues Full RSS Feed" />
+    <link rel="stylesheet" href="./theme/css/main.css" type="text/css" />
+    <link rel="stylesheet" href="./theme/css/pygments.css" type="text/css" />
+    <meta name="generator" content="Pelican" />
+    <meta name="description" content="" />
+    <meta name="author" content="John Connors" />
+
+</head>
+<body>
+    <header>
+        <nav style="overflow: hidden;">
+            <ul>
+                <li><a href="./">Home</a></li>
+                <li><a href="./pages/about.html">About</a></li>
+            </ul>
+        </nav>
+        <div class="header_box" style="height: 50px">
+        <h1><a href="./">
+            <image src='images/logo.png' class="avatar" width="50px" /><span class="site_title">Bad Byte Bootstrap Blues</span>
+            </a></h1></div>
+        </div>
+    </header>
+    <div id="wrapper">
+        <div id="content">            <h4 class="date">Jan 22, 2025</h4>
+
+            <article class="post">
+                <h2 class="title">
+                    <a href="./Using a Blueprint Delegate via C++.html" rel="bookmark" title="Permanent Link to &quot;Calling a Blueprint Delegate via C++ and returning a result.&quot;">Calling a Blueprint Delegate via C++ and returning a result.</a>
+                </h2>
+
+                
+                
+
+                <p>Recently I wrote some C++ code to create and seed volume textures for Unreal. I wanted it to be useable by artists, in a way that looked something like this:</p>
+<p><img alt="Inline Delegate Callback" src="./images/callback.png"></p>
+<p>And the body of the function called back to looked like this:</p>
+<p><img alt="Callback Body" src="./images/callbackbody.png"></p>
+<p>The signature of the callback was </p>
+<div class="highlight"><pre><span></span><code><span class="n">FLinearColor</span><span class="w"> </span><span class="n">Callback</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">X</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Y</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Z</span><span class="p">)</span>
+</code></pre></div>
+
+<p>To use it in C++ I had to declare a delegate type like so:</p>
+<div class="highlight"><pre><span></span><code><span class="n">DECLARE_DYNAMIC_DELEGATE_FourParams</span><span class="p">(</span><span class="n">FVolumeTextureSampleCallback</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span><span class="p">,</span><span class="w"> </span><span class="n">PosX</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span><span class="p">,</span><span class="w"> </span><span class="n">PosY</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span><span class="p">,</span><span class="w"> </span><span class="n">PosZ</span><span class="p">,</span><span class="w"> </span><span class="n">FLinearColor</span><span class="o">&amp;</span><span class="p">,</span><span class="w"> </span><span class="n">PixelColor</span><span class="p">);</span>
+</code></pre></div>
+
+<p>The gotcha that caused me to bang my head for awhile is that I wass not supposed to use a delegate with a return value, but that the return value was a reference in the last place in the argument list. That let me return the sampled value of the color in the volume to the calling function, via C++ with a blueprintable function that looked like this:</p>
+<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="n">UFUNCTION</span><span class="p">(</span><span class="n">BlueprintCallable</span><span class="p">,</span><span class="w"> </span><span class="n">Category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Sandbox|VolumeTexture&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">UPARAM</span><span class="p">(</span><span class="n">DisplayName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VolumeData&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">UVolumeTexture</span><span class="o">*</span><span class="w"> </span><span class="n">CreateSampledVolumeTextureAsset</span><span class="p">(</span>
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="n">FName</span><span class="w"> </span><span class="n">InName</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">FString</span><span class="o">&amp;</span><span class="w"> </span><span class="n">AssetPath</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span><span class="w"> </span><span class="n">InSizeX</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span><span class="w"> </span><span class="n">InSizeY</span><span class="p">,</span><span class="w"> </span><span class="n">int32</span><span class="w"> </span><span class="n">InSizeZ</span><span class="p">,</span>
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="n">FVolumeTextureSampleCallback</span><span class="o">&amp;</span><span class="w"> </span><span class="n">Callback</span><span class="p">);</span>
+</code></pre></div>
+
+<p>Its only a small gotcha, but it seems to crop up a lot on the forums and not get answered so I'm committing the answer here. No doubt it will get scraped and mangled by a dozen AI bots, but hey - at least I tried!</p>
+                <div class="clear"></div>
+
+                <div class="info">
+                    <a href="./Using a Blueprint Delegate via C++.html">posted at 09:22</a>
+                    &nbsp;&middot;&nbsp;<a href="./category/unreal-blueprint-c.html" rel="tag">Unreal, Blueprint, C++</a>
+                </div>
+            </article>
+            <div class="clear"></div>
+            <footer>
+                <p>
+                <a href="https://github.com/tcarwash/blue-penguin-dark">Blue Penguin Dark</a> Theme
+                &middot;
+                Powered by <a href="http://getpelican.com">Pelican</a>
+                &middot;
+                <a href="./feeds/all.atom.xml" rel="alternate">Atom Feed</a>
+                &middot;
+                <a href="./feeds/all.rss.xml" rel="alternate">Rss Feed</a>
+            </footer>
+        </div>
+        <div class="clear"></div>
+    </div>
+</body>
+</html>
